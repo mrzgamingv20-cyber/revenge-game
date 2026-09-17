@@ -121,12 +121,12 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
 
     private fun renderNode(json: JSONObject) {
         val humanity = json.getInt("humanity")
-        val text = json.getString("text")
+        val storyText = json.getString("text")
         val isEnding = json.getBoolean("isEnding")
         val choices = json.getJSONArray("choices")
 
         tvHumanity.text = "Humanity: $humanity"
-        tvStory.text = text
+        tvStory.text = storyText
 
         llChoices.removeAllViews()
 
@@ -137,6 +137,7 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         btnRestart.visibility = View.GONE
 
         for (i in 0 until choices.length()) {
+            val choiceIndex = i
             val choiceObj = choices.getJSONObject(i)
             val button = Button(this).apply {
                 text = choiceObj.getString("text")
@@ -144,7 +145,7 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
                 setBackgroundColor(Color.parseColor("#221822"))
                 setPadding(24, 24, 24, 24)
                 setOnClickListener {
-                    nativeChooseOption(i)
+                    nativeChooseOption(choiceIndex)
                     proceedToCurrentNode()
                 }
             }
