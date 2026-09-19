@@ -13,6 +13,8 @@ class Player(var x: Double, var y: Double, angle: Double) {
     var ammo = 24
     var muzzleFlashTimer = 0f
     var hurtFlashTimer = 0f
+    var swingTimer = 0f
+    var walkBobPhase = 0f
 
     fun rotate(rot: Double) {
         val oldDirX = dirX
@@ -30,6 +32,9 @@ class Enemy(var x: Double, var y: Double, var health: Int = 30) {
     var attackCooldown = 0f
     var wanderAngle = Math.random() * Math.PI * 2
     var wanderTimer = 0f
+    /** Waktu lokal untuk animasi bob/wobble sprite. */
+    var animTime = (Math.random() * 10).toFloat()
+    var moving = false
 }
 
 class LevelMap(
@@ -42,12 +47,13 @@ class LevelMap(
 ) {
     val height = rows.size
     val width = rows[0].length
-    // 0 = lantai kosong, 1 = bata, 2 = kayu
+    // 0 = lantai, 1 = bata, 2 = kayu/metal, 3 = beton
     val grid: Array<IntArray> = Array(height) { r ->
         IntArray(width) { c ->
             when (rows[r][c]) {
                 '#' -> 1
                 '=' -> 2
+                '~' -> 3
                 else -> 0
             }
         }

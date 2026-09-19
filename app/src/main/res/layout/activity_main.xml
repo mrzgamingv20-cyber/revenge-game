@@ -26,6 +26,15 @@
                 android:textSize="14sp"
                 android:layout_marginBottom="16dp" />
 
+            <ImageView
+                android:id="@+id/imgStoryChar"
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="20dp"
+                android:src="@drawable/char_doodle"
+                android:contentDescription="Karakter" />
+
             <TextView
                 android:id="@+id/tvStory"
                 android:layout_width="match_parent"

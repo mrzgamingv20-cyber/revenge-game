@@ -4,6 +4,7 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * Raycasting engine klasik (algoritma DDA ala Lode Vandevenne / Wolfenstein 3D).
@@ -26,7 +27,6 @@ object Raycaster {
         enemies: List<Enemy>,
         zBuffer: DoubleArray
     ) {
-        // langit-langit & lantai flat shaded
         for (y in 0 until h) {
             val color = if (y < h / 2) ceilingColor else floorColor
             val rowStart = y * w
@@ -138,32 +138,38 @@ object Raycaster {
 
             val transformX = invDet * (player.dirY * spriteX - player.dirX * spriteY)
             val transformY = invDet * (-player.planeY * spriteX + player.planeX * spriteY)
-            if (transformY <= 0.15) continue // di belakang kamera
+            if (transformY <= 0.15) continue
 
             val spriteScreenX = ((w / 2.0) * (1.0 + transformX / transformY)).toInt()
 
             val spriteHeight = abs((h / transformY).toInt())
-            val spriteWidth = spriteHeight
-            if (spriteWidth <= 0 || spriteHeight <= 0) continue
+            val walkPulse = if (enemy.moving) 1f + 0.06f * sin(enemy.animTime * 10f) else 1f
+            val bob = (sin(enemy.animTime * (if (enemy.moving) 9.0 else 3.5)) *
+                spriteHeight * (if (enemy.moving) 0.07 else 0.03)).toInt()
+            val drawH = (spriteHeight * walkPulse).toInt().coerceAtLeast(1)
+            val spriteWidth = drawH
+            if (spriteWidth <= 0 || drawH <= 0) continue
 
-            val drawStartY = max(0, -spriteHeight / 2 + h / 2)
-            val drawEndY = min(h - 1, spriteHeight / 2 + h / 2)
+            val centerY = h / 2 + bob
+            val drawStartY = max(0, -drawH / 2 + centerY)
+            val drawEndY = min(h - 1, drawH / 2 + centerY)
             val drawStartX = max(0, -spriteWidth / 2 + spriteScreenX)
             val drawEndX = min(w - 1, spriteWidth / 2 + spriteScreenX)
 
             val brightness = (1.0 - min(1.0, transformY / 12.0)).toFloat()
+            val handShift = (sin(enemy.animTime * 5.0) * 2.0).toInt()
 
             for (stripe in drawStartX until drawEndX) {
                 if (stripe < 0 || stripe >= w) continue
-                if (transformY >= zBuffer[stripe]) continue // ketutup dinding
-                val texX = (((stripe - (-spriteWidth / 2 + spriteScreenX)) * Textures.TEX_SIZE) / spriteWidth)
-                    .coerceIn(0, Textures.TEX_SIZE - 1)
+                if (transformY >= zBuffer[stripe]) continue
+                var texX = (((stripe - (-spriteWidth / 2 + spriteScreenX)) * Textures.TEX_SIZE) / spriteWidth) + handShift
+                texX = texX.coerceIn(0, Textures.TEX_SIZE - 1)
                 for (y in drawStartY..drawEndY) {
-                    val d = y - (-spriteHeight / 2 + h / 2)
-                    val texY = ((d * Textures.TEX_SIZE) / spriteHeight).coerceIn(0, Textures.TEX_SIZE - 1)
+                    val d = y - (-drawH / 2 + centerY)
+                    val texY = ((d * Textures.TEX_SIZE) / drawH).coerceIn(0, Textures.TEX_SIZE - 1)
                     var color = Textures.ENEMY[texY * Textures.TEX_SIZE + texX]
                     val alpha = (color ushr 24) and 0xFF
-                    if (alpha == 0) continue
+                    if (alpha < 20) continue
                     if (enemy.hitFlashTimer > 0f) color = Textures.tintWhite(color, 0.8f)
                     color = Textures.shade(color, brightness.coerceIn(0.2f, 1f))
                     fb[y * w + stripe] = color

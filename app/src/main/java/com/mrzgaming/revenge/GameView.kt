@@ -2,6 +2,7 @@ package com.mrzgaming.revenge
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -21,7 +22,7 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
 
     interface Listener {
         fun onLevelCleared()
-        fun onPlayerDied() // dipanggil hanya untuk feedback, level tetap di-restart otomatis
+        fun onPlayerDied()
     }
 
     var listener: Listener? = null
@@ -37,8 +38,8 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     private var lastFrameNanos = 0L
     private var running = false
     private var levelCleared = false
+    private var animTime = 0f
 
-    // --- kontrol ---
     private var joystickPointerId = -1
     private var joystickBaseX = 0f
     private var joystickBaseY = 0f
@@ -57,6 +58,12 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     private var message: String? = null
     private var messageTimer = 0f
 
+    private val hammerBmp: Bitmap = BitmapFactory.decodeResource(
+        context.resources,
+        R.drawable.weapon_hammer,
+        BitmapFactory.Options().apply { inScaled = false }
+    )
+
     private val hudPaint = Paint().apply {
         color = Color.WHITE
         textSize = 42f
@@ -69,6 +76,7 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     private val joyStickPaint = Paint().apply { color = Color.argb(160, 255, 255, 255) }
     private val shootPaint = Paint().apply { color = Color.argb(150, 200, 60, 60) }
     private val crosshairPaint = Paint().apply { color = Color.argb(200, 255, 255, 255); strokeWidth = 4f }
+    private val weaponPaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }
 
     fun loadLevel(newLevel: LevelMap) {
         level = newLevel
@@ -111,7 +119,7 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
         if (lastFrameNanos == 0L) lastFrameNanos = frameTimeNanos
         var dt = (frameTimeNanos - lastFrameNanos) / 1_000_000_000f
         lastFrameNanos = frameTimeNanos
-        if (dt > 0.06f) dt = 0.06f // clamp biar ga lompat kalau ada jeda/frame drop
+        if (dt > 0.06f) dt = 0.06f
 
         update(dt)
         invalidate()
@@ -122,8 +130,10 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     private fun update(dt: Float) {
         if (!::level.isInitialized) return
 
+        animTime += dt
         if (player.muzzleFlashTimer > 0f) player.muzzleFlashTimer -= dt
         if (player.hurtFlashTimer > 0f) player.hurtFlashTimer -= dt
+        if (player.swingTimer > 0f) player.swingTimer -= dt
         if (messageTimer > 0f) {
             messageTimer -= dt
             if (messageTimer <= 0f) message = null
@@ -131,10 +141,11 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
 
         if (levelCleared || player.health <= 0) return
 
-        // rotasi dari swipe kumulatif ditangani di onTouchEvent (lastLookDelta)
         val moveSpeed = 2.4 * dt
         val forward = (-joystickDY / joystickRadius).coerceIn(-1f, 1f)
         val strafe = (joystickDX / joystickRadius).coerceIn(-1f, 1f)
+        val moving = kotlin.math.abs(forward) > 0.08f || kotlin.math.abs(strafe) > 0.08f
+        if (moving) player.walkBobPhase += dt * 10f
 
         val newX = player.x + player.dirX * forward * moveSpeed - player.dirY * strafe * moveSpeed
         val newY = player.y + player.dirY * forward * moveSpeed + player.dirX * strafe * moveSpeed
@@ -149,7 +160,6 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
         }
         if (player.health <= 0) {
             listener?.onPlayerDied()
-            // respawn otomatis biar tetap flow, tidak menghukum cerita
             resetPlayerAndEnemies()
         }
     }
@@ -157,11 +167,13 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     private fun updateEnemies(dt: Float) {
         for (e in enemies) {
             if (!e.alive) continue
+            e.animTime += dt
             if (e.hitFlashTimer > 0f) e.hitFlashTimer -= dt
             if (e.attackCooldown > 0f) e.attackCooldown -= dt
 
             val d = dist(player.x, player.y, e.x, e.y)
             val sees = d < 7.0 && level.hasLineOfSight(e.x, e.y, player.x, player.y)
+            e.moving = false
 
             if (sees) {
                 if (d > 1.3) {
@@ -173,6 +185,7 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
                     val ny = e.y + dy / len * speed
                     if (level.canStand(nx, e.y)) e.x = nx
                     if (level.canStand(e.x, ny)) e.y = ny
+                    e.moving = true
                 } else if (e.attackCooldown <= 0f) {
                     player.health = (player.health - 8).coerceAtLeast(0)
                     player.hurtFlashTimer = 0.25f
@@ -187,8 +200,10 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
                 val speed = 0.35 * dt
                 val nx = e.x + cos(e.wanderAngle) * speed
                 val ny = e.y + sin(e.wanderAngle) * speed
-                if (level.canStand(nx, e.y)) e.x = nx else e.wanderTimer = 0f
-                if (level.canStand(e.x, ny)) e.y = ny else e.wanderTimer = 0f
+                var moved = false
+                if (level.canStand(nx, e.y)) { e.x = nx; moved = true } else e.wanderTimer = 0f
+                if (level.canStand(e.x, ny)) { e.y = ny; moved = true } else e.wanderTimer = 0f
+                e.moving = moved
             }
         }
     }
@@ -201,6 +216,7 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
         }
         player.ammo--
         player.muzzleFlashTimer = 0.12f
+        player.swingTimer = 0.28f
 
         var bestEnemy: Enemy? = null
         var bestDist = Double.MAX_VALUE
@@ -233,8 +249,6 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
         message = text
         messageTimer = 1.2f
     }
-
-    // ---------------- rendering ----------------
 
     override fun onDraw(canvas: Canvas) {
         if (!::level.isInitialized || !::player.isInitialized) return
@@ -273,14 +287,36 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     }
 
     private fun drawWeapon(canvas: Canvas) {
-        val gunPaint = Paint().apply { color = Color.rgb(35, 35, 40) }
-        val cx = width / 2f
+        val cx = width * 0.72f
         val baseY = height.toFloat()
-        canvas.drawRoundRect(RectF(cx - 40f, baseY - 210f, cx + 40f, baseY - 40f), 18f, 18f, gunPaint)
-        canvas.drawRoundRect(RectF(cx - 60f, baseY - 60f, cx + 60f, baseY + 40f), 24f, 24f, gunPaint)
+        val idleBob = sin(animTime * 3.2f) * 10f
+        val walkBob = if (player.walkBobPhase > 0f) sin(player.walkBobPhase) * 14f else 0f
+        val swingT = (player.swingTimer / 0.28f).coerceIn(0f, 1f)
+        // ease: angkat → pukul → kembali
+        val swingAngle = when {
+            swingT > 0.55f -> {
+                val t = (1f - swingT) / 0.45f
+                -25f + t * t * 70f
+            }
+            swingT > 0f -> {
+                val t = swingT / 0.55f
+                45f * (1f - t)
+            }
+            else -> 0f
+        }
+        val swingDrop = if (swingT > 0f) sin((1f - swingT) * Math.PI.toFloat()) * 40f else 0f
+
+        val size = height * 0.42f
+        canvas.save()
+        canvas.translate(cx, baseY - size * 0.15f + idleBob + walkBob + swingDrop)
+        canvas.rotate(swingAngle, 0f, 0f)
+        val dst = RectF(-size * 0.35f, -size, size * 0.35f, size * 0.05f)
+        canvas.drawBitmap(hammerBmp, null, dst, weaponPaint)
+        canvas.restore()
+
         if (player.muzzleFlashTimer > 0f) {
-            val flash = Paint().apply { color = Color.rgb(255, 220, 120) }
-            canvas.drawCircle(cx, baseY - 220f, 26f, flash)
+            val flash = Paint().apply { color = Color.argb(200, 255, 220, 120) }
+            canvas.drawCircle(cx - size * 0.05f, baseY - size * 0.85f + idleBob, 28f, flash)
         }
     }
 
@@ -295,7 +331,6 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
         canvas.drawText("Peluru: ${player.ammo}", 24f, 100f, hudPaint)
         canvas.drawText(level.name, 24f, 145f, hudPaint)
 
-        // crosshair
         val cx = width / 2f
         val cy = height / 2f
         canvas.drawLine(cx - 16f, cy, cx + 16f, cy, crosshairPaint)
@@ -316,8 +351,6 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
         hudPaint.textAlign = Paint.Align.LEFT
         hudPaint.textSize = 42f
     }
-
-    // ---------------- input ----------------
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {

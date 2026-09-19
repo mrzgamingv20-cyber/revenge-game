@@ -76,7 +76,8 @@ kondisi baru di situ + map baru di `Levels.kt`.
 - `MainActivity.kt` — orkestrasi: kapan tampil cerita vs kapan mainkan level aksi
 - `activity_main.xml` — layout root (story container + game container)
 - `Raycaster.kt` — mesin raycasting (DDA), render dinding bertekstur + sprite musuh billboard
-- `Textures.kt` — tekstur bata/kayu/musuh digambar procedural (tanpa aset gambar)
+- `Textures.kt` — load tekstur/sprite dari `res/drawable-nodpi` (hasil `asset01.zip`)
+- Aset: `tex_brick`/`tex_wood`/`tex_concrete` (dinding), `sprite_enemy` (doodle), `weapon_hammer`, `char_doodle` (UI cerita)
 - `GameModel.kt` — data class `Player`, `Enemy`, `LevelMap`
 - `Levels.kt` — layout map & spawn musuh tiap level aksi
 - `GameView.kt` — loop game, kontrol sentuh (joystick/swipe/tembak), AI musuh sederhana, HUD

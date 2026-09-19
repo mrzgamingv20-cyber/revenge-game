@@ -1,10 +1,15 @@
 package com.mrzgaming.revenge
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -18,13 +23,13 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
     private lateinit var btnRestart: Button
     private lateinit var storyContainer: View
     private lateinit var gameContainer: FrameLayout
+    private lateinit var imgStoryChar: ImageView
     private var gameView: GameView? = null
+    private var charBobAnimator: ObjectAnimator? = null
 
-    // Level aksi dipicu sekali saja per playthrough, tepat sebelum node cerita terkait tampil
     private var level1Played = false
     private var level2Played = false
 
-    // --- Jembatan ke C++ (lihat native_bridge.cpp) ---
     private external fun nativeGetCurrentNode(): String
     private external fun nativeChooseOption(index: Int)
     private external fun nativeReset()
@@ -37,6 +42,7 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Textures.init(this)
         setContentView(R.layout.activity_main)
 
         tvStory = findViewById(R.id.tvStory)
@@ -45,6 +51,9 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         btnRestart = findViewById(R.id.btnRestart)
         storyContainer = findViewById(R.id.storyContainer)
         gameContainer = findViewById(R.id.gameContainer)
+        imgStoryChar = findViewById(R.id.imgStoryChar)
+
+        startCharBob()
 
         btnRestart.setOnClickListener {
             nativeReset()
@@ -54,6 +63,24 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         }
 
         proceedToCurrentNode()
+    }
+
+    private fun startCharBob() {
+        charBobAnimator?.cancel()
+        charBobAnimator = ObjectAnimator.ofFloat(imgStoryChar, View.TRANSLATION_Y, 0f, -14f).apply {
+            duration = 900
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = AccelerateDecelerateInterpolator()
+            start()
+        }
+        ObjectAnimator.ofFloat(imgStoryChar, View.ROTATION, -3f, 3f).apply {
+            duration = 1400
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = AccelerateDecelerateInterpolator()
+            start()
+        }
     }
 
     override fun onPause() {
@@ -66,7 +93,6 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         gameView?.start()
     }
 
-    /** Cek node saat ini: kalau butuh level aksi sebelum ditampilkan, mainkan dulu levelnya. */
     private fun proceedToCurrentNode() {
         val json = JSONObject(nativeGetCurrentNode())
         val id = json.getInt("id")
@@ -91,12 +117,19 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         view.listener = this
         view.loadLevel(level)
         gameContainer.removeAllViews()
-        gameContainer.addView(view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        gameContainer.addView(
+            view,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
         gameView = view
         view.start()
+        gameContainer.alpha = 0f
+        gameContainer.animate().alpha(1f).setDuration(350).start()
     }
 
-    // Dipanggil dari GameView begitu semua musuh di level tumbang
     override fun onLevelCleared() {
         runOnUiThread {
             llChoices.postDelayed({
@@ -111,12 +144,16 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
     }
 
     override fun onPlayerDied() {
-        // Sekadar hook feedback; GameView sudah auto-respawn levelnya sendiri.
+        // GameView sudah auto-respawn.
     }
 
     private fun showStory(show: Boolean) {
         storyContainer.visibility = if (show) View.VISIBLE else View.GONE
         gameContainer.visibility = if (show) View.GONE else View.VISIBLE
+        if (show) {
+            storyContainer.alpha = 0f
+            storyContainer.animate().alpha(1f).setDuration(400).start()
+        }
     }
 
     private fun renderNode(json: JSONObject) {
@@ -127,11 +164,30 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
 
         tvHumanity.text = "Humanity: $humanity"
         tvStory.text = storyText
+        tvStory.alpha = 0f
+        tvStory.translationY = 18f
+        tvStory.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(420)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+
+        imgStoryChar.scaleX = 0.85f
+        imgStoryChar.scaleY = 0.85f
+        imgStoryChar.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(380)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
 
         llChoices.removeAllViews()
 
         if (isEnding) {
             btnRestart.visibility = View.VISIBLE
+            btnRestart.alpha = 0f
+            btnRestart.animate().alpha(1f).setDuration(400).start()
             return
         }
         btnRestart.visibility = View.GONE
@@ -144,9 +200,13 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
                 setTextColor(Color.WHITE)
                 setBackgroundColor(Color.parseColor("#221822"))
                 setPadding(24, 24, 24, 24)
+                alpha = 0f
+                translationY = 24f
                 setOnClickListener {
-                    nativeChooseOption(choiceIndex)
-                    proceedToCurrentNode()
+                    animate().alpha(0.5f).setDuration(80).withEndAction {
+                        nativeChooseOption(choiceIndex)
+                        proceedToCurrentNode()
+                    }.start()
                 }
             }
             val params = LinearLayout.LayoutParams(
@@ -155,6 +215,13 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
             )
             params.bottomMargin = 20
             llChoices.addView(button, params)
+            button.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setStartDelay((i * 90).toLong())
+                .setDuration(320)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
         }
     }
 }

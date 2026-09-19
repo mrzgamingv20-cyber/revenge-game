@@ -4,6 +4,8 @@ package com.mrzgaming.revenge
  * Dua level aksi yang disisipkan di antara node cerita:
  *  - Level 1: menyusup ke gudang pabrik Handoko cari bukti (dipicu sebelum node id 1)
  *  - Level 2: masuk ke rumah Handoko, lewati pengawalnya (dipicu sebelum node id 2)
+ *
+ * Simbol map: # bata, = metal/kayu, ~ beton, . lantai
  */
 object Levels {
 
@@ -11,13 +13,13 @@ object Levels {
         val rows = listOf(
             "##############",
             "#............#",
-            "#.==...==..#.#",
-            "#.==...==..#.#",
+            "#.==...~~..#.#",
+            "#.==...~~..#.#",
             "#..........#.#",
             "#.####..####.#",
             "#............#",
             "#.==......==.#",
-            "#.==......==.#",
+            "#.~~......~~.#",
             "#............#",
             "#.####..####.#",
             "#............#",
@@ -44,14 +46,14 @@ object Levels {
             "#............#",
             "#.==.====.=..#",
             "#.==......=..#",
-            "#....==......#",
+            "#....~~......#",
             "#..#....#....#",
             "#..#....#....#",
             "#............#",
             "#.====..===..#",
             "#............#",
-            "#..==....==..#",
-            "#..==....==..#",
+            "#..==....~~..#",
+            "#..==....~~..#",
             "#............#",
             "##############"
         )
