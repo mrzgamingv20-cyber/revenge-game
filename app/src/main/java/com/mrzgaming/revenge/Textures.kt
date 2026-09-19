@@ -2,12 +2,12 @@ package com.mrzgaming.revenge
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import com.mrzgaming.revenge.dev.AssetCatalog
+import com.mrzgaming.revenge.dev.DevConfig
 import kotlin.math.min
 
 /**
- * Tekstur & sprite dari aset PNG di res/drawable-nodpi.
- * Dipanggil via [init] sekali di MainActivity sebelum level jalan.
+ * Tekstur & sprite dari drawable / override developer (DevConfig).
  */
 object Textures {
     const val TEX_SIZE = 128
@@ -22,42 +22,91 @@ object Textures {
         private set
 
     fun init(context: Context) {
-        if (ready) return
-        val res = context.applicationContext.resources
-        loadOpaque(BRICK, res, R.drawable.tex_brick)
-        loadOpaque(WOOD, res, R.drawable.tex_wood)
-        loadOpaque(CONCRETE, res, R.drawable.tex_concrete)
-        loadSprite(ENEMY, res, R.drawable.sprite_enemy)
+        reload(context)
+    }
+
+    /** Paksa muat ulang dari DevConfig (dipanggil Asset Settings). */
+    fun reload(context: Context) {
+        val ctx = context.applicationContext
+        loadOpaque(
+            BRICK,
+            AssetCatalog.resolveBitmap(
+                ctx,
+                DevConfig.getAssetKey(ctx, DevConfig.KEY_BRICK, "tex_brick"),
+                R.drawable.tex_brick
+            )
+        )
+        loadOpaque(
+            WOOD,
+            AssetCatalog.resolveBitmap(
+                ctx,
+                DevConfig.getAssetKey(ctx, DevConfig.KEY_WOOD, "tex_wood"),
+                R.drawable.tex_wood
+            )
+        )
+        loadOpaque(
+            CONCRETE,
+            AssetCatalog.resolveBitmap(
+                ctx,
+                DevConfig.getAssetKey(ctx, DevConfig.KEY_CONCRETE, "tex_concrete"),
+                R.drawable.tex_concrete
+            )
+        )
+        loadSprite(
+            ENEMY,
+            AssetCatalog.resolveBitmap(
+                ctx,
+                DevConfig.getAssetKey(ctx, DevConfig.KEY_ENEMY, "sprite_enemy"),
+                R.drawable.sprite_enemy
+            )
+        )
         ready = true
     }
 
-    private fun decodeScaled(res: android.content.res.Resources, id: Int): Bitmap {
-        val opts = BitmapFactory.Options().apply { inScaled = false }
-        val raw = BitmapFactory.decodeResource(res, id, opts)
-            ?: error("Gagal load drawable $id")
-        return if (raw.width == TEX_SIZE && raw.height == TEX_SIZE) {
-            raw
-        } else {
-            val scaled = Bitmap.createScaledBitmap(raw, TEX_SIZE, TEX_SIZE, true)
+    fun loadWeaponBitmap(context: Context): Bitmap {
+        val ctx = context.applicationContext
+        val raw = AssetCatalog.resolveBitmap(
+            ctx,
+            DevConfig.getAssetKey(ctx, DevConfig.KEY_WEAPON, "weapon_hammer"),
+            R.drawable.weapon_hammer
+        )
+        return if (raw.width == 256 && raw.height == 256) raw
+        else {
+            val scaled = Bitmap.createScaledBitmap(raw, 256, 256, true)
             if (scaled !== raw) raw.recycle()
             scaled
         }
     }
 
-    private fun loadOpaque(dest: IntArray, res: android.content.res.Resources, id: Int) {
-        val bmp = decodeScaled(res, id)
-        bmp.getPixels(dest, 0, TEX_SIZE, 0, 0, TEX_SIZE, TEX_SIZE)
-        // pastikan alpha penuh biar shading wall tidak transparan
-        for (i in dest.indices) {
-            dest[i] = dest[i] or 0xFF000000.toInt()
-        }
-        bmp.recycle()
+    fun loadStoryCharBitmap(context: Context): Bitmap {
+        val ctx = context.applicationContext
+        return AssetCatalog.resolveBitmap(
+            ctx,
+            DevConfig.getAssetKey(ctx, DevConfig.KEY_STORY_CHAR, "char_doodle"),
+            R.drawable.char_doodle
+        )
     }
 
-    private fun loadSprite(dest: IntArray, res: android.content.res.Resources, id: Int) {
-        val bmp = decodeScaled(res, id)
+    private fun scaleToTex(src: Bitmap): Bitmap {
+        return if (src.width == TEX_SIZE && src.height == TEX_SIZE) src
+        else {
+            val scaled = Bitmap.createScaledBitmap(src, TEX_SIZE, TEX_SIZE, true)
+            if (scaled !== src) src.recycle()
+            scaled
+        }
+    }
+
+    private fun loadOpaque(dest: IntArray, src: Bitmap) {
+        val bmp = scaleToTex(src)
         bmp.getPixels(dest, 0, TEX_SIZE, 0, 0, TEX_SIZE, TEX_SIZE)
-        bmp.recycle()
+        for (i in dest.indices) dest[i] = dest[i] or 0xFF000000.toInt()
+        if (!bmp.isRecycled) bmp.recycle()
+    }
+
+    private fun loadSprite(dest: IntArray, src: Bitmap) {
+        val bmp = scaleToTex(src)
+        bmp.getPixels(dest, 0, TEX_SIZE, 0, 0, TEX_SIZE, TEX_SIZE)
+        if (!bmp.isRecycled) bmp.recycle()
     }
 
     fun shade(color: Int, factor: Float): Int {
@@ -82,7 +131,6 @@ object Textures {
         return (a shl 24) or (nr shl 16) or (ng shl 8) or nb
     }
 
-    /** 1=bata, 2=kayu/metal, 3=beton */
     fun textureFor(wallType: Int): IntArray = when (wallType) {
         2 -> WOOD
         3 -> CONCRETE

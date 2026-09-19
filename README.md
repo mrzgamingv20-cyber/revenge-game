@@ -76,8 +76,14 @@ kondisi baru di situ + map baru di `Levels.kt`.
 - `MainActivity.kt` — orkestrasi: kapan tampil cerita vs kapan mainkan level aksi
 - `activity_main.xml` — layout root (story container + game container)
 - `Raycaster.kt` — mesin raycasting (DDA), render dinding bertekstur + sprite musuh billboard
-- `Textures.kt` — load tekstur/sprite dari `res/drawable-nodpi` (hasil `asset01.zip`)
-- Aset: `tex_brick`/`tex_wood`/`tex_concrete` (dinding), `sprite_enemy` (doodle), `weapon_hammer`, `char_doodle` (UI cerita)
+## Developer Tools
+
+Tombol **DEV · Tools** di layar cerita membuka:
+
+1. **Cutscene Maker** — susun shot (teks, durasi, karakter), simpan JSON, export **MP4** ke folder Download.
+2. **Asset Settings** — ganti sprite musuh, senjata, karakter cerita, tekstur dinding (`#`/`=`/`~`); bisa import PNG.
+3. **Map Editor** — paint tile, drag player/enemy, putar map 90°, putar arah player; simpan sebagai map custom level 1/2.
+
 - `GameModel.kt` — data class `Player`, `Enemy`, `LevelMap`
 - `Levels.kt` — layout map & spawn musuh tiap level aksi
 - `GameView.kt` — loop game, kontrol sentuh (joystick/swipe/tembak), AI musuh sederhana, HUD

@@ -2,7 +2,6 @@ package com.mrzgaming.revenge
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -58,11 +57,7 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     private var message: String? = null
     private var messageTimer = 0f
 
-    private val hammerBmp: Bitmap = BitmapFactory.decodeResource(
-        context.resources,
-        R.drawable.weapon_hammer,
-        BitmapFactory.Options().apply { inScaled = false }
-    )
+    private var hammerBmp: Bitmap = Textures.loadWeaponBitmap(context)
 
     private val hudPaint = Paint().apply {
         color = Color.WHITE
@@ -82,6 +77,14 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
         level = newLevel
         levelCleared = false
         message = null
+        if (!hammerBmp.isRecycled) {
+            // refresh senjata kalau asset settings berubah
+            val fresh = Textures.loadWeaponBitmap(context)
+            if (hammerBmp !== fresh) {
+                hammerBmp.recycle()
+                hammerBmp = fresh
+            }
+        }
         resetPlayerAndEnemies()
     }
 

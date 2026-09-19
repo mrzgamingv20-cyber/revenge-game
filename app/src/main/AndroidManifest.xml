@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+
     <application
         android:allowBackup="true"
         android:label="Revenge"
         android:icon="@android:drawable/sym_def_app_icon"
-        android:theme="@style/Theme.Revenge">
+        android:theme="@style/Theme.Revenge"
+        android:requestLegacyExternalStorage="true">
 
         <activity
             android:name=".MainActivity"
@@ -16,5 +20,29 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".dev.DevHubActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:label="Dev Tools" />
+
+        <activity
+            android:name=".dev.AssetSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:label="Asset Settings" />
+
+        <activity
+            android:name=".dev.MapEditorActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:label="Map Editor" />
+
+        <activity
+            android:name=".dev.CutsceneEditorActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:label="Cutscene Maker" />
     </application>
 </manifest>

@@ -1,13 +1,30 @@
 package com.mrzgaming.revenge
 
+import android.content.Context
+import com.mrzgaming.revenge.dev.DevConfig
+import com.mrzgaming.revenge.dev.MapStore
+
 /**
- * Dua level aksi yang disisipkan di antara node cerita:
- *  - Level 1: menyusup ke gudang pabrik Handoko cari bukti (dipicu sebelum node id 1)
- *  - Level 2: masuk ke rumah Handoko, lewati pengawalnya (dipicu sebelum node id 2)
+ * Dua level aksi yang disisipkan di antara node cerita.
+ * Kalau DevConfig pakai map custom, load dari MapStore.
  *
  * Simbol map: # bata, = metal/kayu, ~ beton, . lantai
  */
 object Levels {
+
+    fun resolveLevel1(ctx: Context): LevelMap {
+        if (DevConfig.useCustomMap(ctx, 1)) {
+            MapStore.load(ctx, 1)?.toLevelMap()?.let { return it }
+        }
+        return level1()
+    }
+
+    fun resolveLevel2(ctx: Context): LevelMap {
+        if (DevConfig.useCustomMap(ctx, 2)) {
+            MapStore.load(ctx, 2)?.toLevelMap()?.let { return it }
+        }
+        return level2()
+    }
 
     fun level1(): LevelMap {
         val rows = listOf(

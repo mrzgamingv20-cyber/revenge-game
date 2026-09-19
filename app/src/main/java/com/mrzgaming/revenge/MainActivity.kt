@@ -2,6 +2,7 @@ package com.mrzgaming.revenge
 
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
@@ -13,6 +14,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.mrzgaming.revenge.dev.DevHubActivity
 import org.json.JSONObject
 
 class MainActivity : AppCompatActivity(), GameView.Listener {
@@ -21,6 +23,7 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
     private lateinit var tvHumanity: TextView
     private lateinit var llChoices: LinearLayout
     private lateinit var btnRestart: Button
+    private lateinit var btnDev: Button
     private lateinit var storyContainer: View
     private lateinit var gameContainer: FrameLayout
     private lateinit var imgStoryChar: ImageView
@@ -49,11 +52,17 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         tvHumanity = findViewById(R.id.tvHumanity)
         llChoices = findViewById(R.id.llChoices)
         btnRestart = findViewById(R.id.btnRestart)
+        btnDev = findViewById(R.id.btnDev)
         storyContainer = findViewById(R.id.storyContainer)
         gameContainer = findViewById(R.id.gameContainer)
         imgStoryChar = findViewById(R.id.imgStoryChar)
 
+        refreshStoryChar()
         startCharBob()
+
+        btnDev.setOnClickListener {
+            startActivity(Intent(this, DevHubActivity::class.java))
+        }
 
         btnRestart.setOnClickListener {
             nativeReset()
@@ -63,6 +72,17 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         }
 
         proceedToCurrentNode()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Textures.reload(this)
+        refreshStoryChar()
+        gameView?.start()
+    }
+
+    private fun refreshStoryChar() {
+        imgStoryChar.setImageBitmap(Textures.loadStoryCharBitmap(this))
     }
 
     private fun startCharBob() {
@@ -88,11 +108,6 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         gameView?.stop()
     }
 
-    override fun onResume() {
-        super.onResume()
-        gameView?.start()
-    }
-
     private fun proceedToCurrentNode() {
         val json = JSONObject(nativeGetCurrentNode())
         val id = json.getInt("id")
@@ -100,11 +115,11 @@ class MainActivity : AppCompatActivity(), GameView.Listener {
         when {
             id == 1 && !level1Played -> {
                 level1Played = true
-                startLevel(Levels.level1())
+                startLevel(Levels.resolveLevel1(this))
             }
             id == 2 && !level2Played -> {
                 level2Played = true
-                startLevel(Levels.level2())
+                startLevel(Levels.resolveLevel2(this))
             }
             else -> renderNode(json)
         }
